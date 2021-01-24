@@ -13,7 +13,7 @@ const ROOT_NODE_INDEX = 0
 //Linked List Trie
 type LinkedListTrieNode struct {
 	Code                            rune
-	Depth, Left, Right, Index, Base int
+	Depth, Left, Right, Index, Base int // Index base 主要用于ac自动机，可基于此实现
 	SubKey                          []rune
 	Children                        [](*LinkedListTrieNode)
 }
@@ -90,6 +90,9 @@ func (dat *DoubleArrayTrie) PrintTrie() {
 	fmt.Printf("+-----+-----+-----+\n")
 	fmt.Printf("|%5s|%5s|%5s|\n", "id", "base", "check")
 	for idx, _ := range dat.Base {
+		if dat.Base[idx] == 0 && dat.Check[idx] == 0 {
+			continue
+		}
 		fmt.Printf("+-----+-----+-----+\n")
 		fmt.Printf("|%5d|%5d|%5d|\n", idx, dat.Base[idx], dat.Check[idx])
 	}
@@ -181,8 +184,9 @@ func (d *Darts) fetch(parent *LinkedListTrieNode) (siblings [](*LinkedListTrieNo
 			tmpNode.Depth = parent.Depth + 1
 			tmpNode.Code = cur
 			tmpNode.Left = i
-			tmpNode.SubKey = make([]rune, len(subKey))
+			tmpNode.SubKey = make([]rune, len(subKey)) // 到当前节点的所有前缀
 			copy(tmpNode.SubKey, subKey)
+			// 这里根本没必要用siblings和Children两个，这两个是同一个东西，这里操作两次是没必要的
 			if len(siblings) != 0 {
 				siblings[len(siblings)-1].Right = i
 			}
@@ -207,6 +211,7 @@ func (d *Darts) fetch(parent *LinkedListTrieNode) (siblings [](*LinkedListTrieNo
 	return parent.Children, nil
 }
 
+// 把 begin + code看作一个字符处于base数组的索引
 func (d *Darts) insert(siblings [](*LinkedListTrieNode)) (int, error) {
 	var begin int = 0
 	var pos int = max(int(siblings[0].Code)+1, d.nextCheckPos) - 1
@@ -232,7 +237,7 @@ func (d *Darts) insert(siblings [](*LinkedListTrieNode)) (int, error) {
 			d.nextCheckPos = pos
 			first = true
 		}
-
+		// 这个begin的取值还是很难理解，可能是为了防止频繁冲突？增大随机性？
 		begin = pos - int(siblings[0].Code)
 		if len(d.dat.Base) <= (begin + int(siblings[len(siblings)-1].Code)) {
 			d.resize(begin + int(siblings[len(siblings)-1].Code) + RESIZE_DELTA)
@@ -266,9 +271,9 @@ func (d *Darts) insert(siblings [](*LinkedListTrieNode)) (int, error) {
 			return -1, err
 		}
 
-		if len(newSiblings) == 0 {
+		if len(newSiblings) == 0 { // 字符到了结尾，还是能fetch到一个空字符的，即code为0，空字符fetch时才没东西，此时才算是结束
 			d.dat.Base[begin+int(siblings[i].Code)] = -siblings[i].Left - 1
-			d.Output[begin+int(siblings[i].Code)] = siblings[i].SubKey
+			d.Output[begin+int(siblings[i].Code)] = siblings[i].SubKey // 到结尾了，可以保存一个完整的单词(词语)
 			siblings[i].Base = END_NODE_BASE
 			siblings[i].Index = begin + int(siblings[i].Code)
 		} else {
@@ -277,7 +282,7 @@ func (d *Darts) insert(siblings [](*LinkedListTrieNode)) (int, error) {
 			if err != nil {
 				return -1, err
 			}
-			d.dat.Base[begin+int(siblings[i].Code)] = h
+			d.dat.Base[begin+int(siblings[i].Code)] = h // 设置当前状态的base值为 使得所有子节点d.dat.Check[begin+int(siblings[i].Code)]==0成立的begin值
 			siblings[i].Index = begin + int(siblings[i].Code)
 			siblings[i].Base = h
 		}

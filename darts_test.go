@@ -95,7 +95,7 @@ func TestSearchChinese(t *testing.T) {
 		return
 	}
 
-	//dat.PrintTrie()
+	dat.PrintTrie()
 	//llt.PrintTrie()
 
 	for _, d := range dict {
